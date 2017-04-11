@@ -20,7 +20,7 @@ public class EnumLabelExample : MonoBehaviour
 }
 
 [System.AttributeUsageAttribute(System.AttributeTargets.Field
-	,Inherited = true, AllowMultiple = true)]
+	,Inherited = true, AllowMultiple = false)]
 public class EnumLabelAttribute : PropertyAttribute
 {
 	public string displayName;
