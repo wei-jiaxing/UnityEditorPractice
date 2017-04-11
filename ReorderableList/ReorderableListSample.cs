@@ -1,10 +1,10 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 
-public class PropertyDrawerSample : MonoBehaviour
+public class ReorderableListSample : MonoBehaviour
 {
 	public Sample sample;
-	public List<Sample> samples;
+	public List<Sample> samples = new List<Sample>();
 }
 
 [System.Serializable]

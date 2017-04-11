@@ -2,15 +2,15 @@
 using UnityEditor;
 using UnityEditorInternal;
 
-[CustomEditor(typeof(PropertyDrawerSample))]
+[CustomEditor(typeof(ReorderableListSample))]
 public class SampleInspector : Editor
 {
 	ReorderableList list;
 	int header;
 	public void OnEnable()
 	{
-		var t = (PropertyDrawerSample)target;
-		list = new ReorderableList(t.samples, typeof(PropertyDrawerSample));
+		var t = (ReorderableListSample)target;
+		list = new ReorderableList(t.samples, typeof(ReorderableListSample));
 
 		list.drawHeaderCallback = (rect) =>
 		{
@@ -31,7 +31,7 @@ public class SampleInspector : Editor
 				new GUIContent("Item1"),
 				false,
 				OnMenuClick,
-				System.DateTime.Now
+				System.DateTime.Now.ToLongTimeString()
 			);
 
 			menu.AddSeparator("");
@@ -74,7 +74,7 @@ public class SampleInspector : Editor
 
 	private void OnDrawElementCallback(Rect rect, int index, bool isActive, bool isFocused)
 	{
-		var t = (PropertyDrawerSample)target;
+		var t = (ReorderableListSample)target;
 		var element = t.samples[index];
 		rect.y += 2;
 		rect.height = EditorGUIUtility.singleLineHeight;
