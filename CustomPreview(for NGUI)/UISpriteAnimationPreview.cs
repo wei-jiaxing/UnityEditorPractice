@@ -120,7 +120,7 @@ public class SpriteAnimationShower : UISpriteAnimationInspector
 /// If this Object has the UISpriteAnimation component, hide the default UISprite preview
 /// </summary>
 [CustomEditor(typeof(UISprite))]
-public class UISpriteAnimator : UISpriteInspector
+public class UISpriteDoNotShowPreview : UISpriteInspector
 {
 	public override bool HasPreviewGUI()
 	{
