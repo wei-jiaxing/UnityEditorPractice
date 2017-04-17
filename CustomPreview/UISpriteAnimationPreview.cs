@@ -115,3 +115,20 @@ public class SpriteAnimationShower : UISpriteAnimationInspector
 
 	float _speedScale = 1f;
 }
+
+/// <summary>
+/// If this Object has the UISpriteAnimation component, hide the default UISprite preview
+/// </summary>
+[CustomEditor(typeof(UISprite))]
+public class UISpriteAnimator : UISpriteInspector
+{
+	public override bool HasPreviewGUI()
+	{
+		var t = target as UISprite;
+		var anim = t.GetComponent<UISpriteAnimation>();
+		if (anim != null)
+			return false;
+		else
+			return base.HasPreviewGUI();
+	}
+}
