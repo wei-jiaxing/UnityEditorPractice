@@ -6,20 +6,17 @@ using System.Collections.Generic;
 /// <summary>
 /// Another way to preview UISprite's animation, and multiple objects can be used this time.
 /// 
-/// For using multiple, "EditorGUI.DropShadowLabel(GUILayoutUtility.GetRect(Screen.width, 18f), text);" in NGUIEditorTools
-/// should be deleted because there cannnot use a label for multiple objects.
+/// For using multiple, "EditorGUI.DropShadowLabel(GUILayoutUtility.GetRect(Screen.width, 18f), text);" in NGUIEditorTools's
+/// DrawSprite() function need to be deleted or changed to proper code, because there cannnot use a fixed Rect for multiple objects.
 /// 
-/// [!Pay Attention!] UISprite's spriteName was changed when previewing.
+/// [!Pay Attention!] UISprite's spriteName will be changed when previewing.
 /// </summary>
 [CustomEditor(typeof(UISprite))]
 [CanEditMultipleObjects]
 public class UISpriteAnimator : UISpriteInspector
 {
-	Dictionary<UISprite,UISpriteAnimation> _spriteAnims = new Dictionary<UISprite, UISpriteAnimation>();
+	Dictionary<UISprite, AnimationSetting> _spriteAnims = new Dictionary<UISprite, AnimationSetting>();
 
-	float _delta;
-	int _index;
-	float _lastTime;
 	bool _isPlaying = true;
 	bool _isMultiply;
 
@@ -34,8 +31,7 @@ public class UISpriteAnimator : UISpriteInspector
 				var spriteAnim = targetSprite.GetComponent<UISpriteAnimation>();
 				if (spriteAnim != null)
 				{
-					_spriteAnims[targetSprite] = spriteAnim;
-					_lastTime = (float)EditorApplication.timeSinceStartup;
+					_spriteAnims[targetSprite] = new AnimationSetting(spriteAnim);
 				}
 			}
 			_isMultiply = targets.Length > 1;
@@ -44,32 +40,41 @@ public class UISpriteAnimator : UISpriteInspector
 
 	public override void OnPreviewGUI(Rect rect, GUIStyle background)
 	{
-		_delta += ((float)EditorApplication.timeSinceStartup - _lastTime) * _speedScale;
-		_lastTime = (float)EditorApplication.timeSinceStartup;
-
 		var t = target as UISprite;
-		UISpriteAnimation spriteAnim;
+		AnimationSetting setting;
 
-		if (_spriteAnims.TryGetValue(t, out spriteAnim))
+		if (_spriteAnims.TryGetValue(t, out setting))
 		{
-			float rate = 1f / spriteAnim.framesPerSecond;
-			if (rate < _delta)
-			{
-				_delta = Mathf.Repeat(_delta, rate);
-				_index++;
-			}
+			setting.delta += ((float)EditorApplication.timeSinceStartup - setting.lastTime) * _speedScale;
+			setting.lastTime = (float)EditorApplication.timeSinceStartup;
+
+			var spriteAnim = setting.anim;
 
 			BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
 			var field = typeof(UISpriteAnimation).GetField("mSpriteNames",flags);
 			var spriteNames = field.GetValue(spriteAnim) as List<string>;
 
-			int idx = _index % spriteNames.Count;
-			if (idx < spriteNames.Count && _isPlaying)
-				t.spriteName = spriteNames[idx];
-			
-			if (!_isMultiply)
+			if (spriteNames.Count > 0)
 			{
-				EditorGUI.DropShadowLabel(GUILayoutUtility.GetRect(1f, 18f), spriteNames[idx]);
+				float rate = 1f / spriteAnim.framesPerSecond;
+				if (rate < setting.delta)
+				{
+					setting.delta = Mathf.Repeat(setting.delta, rate);
+					setting.index++;
+				}
+				setting.index %= spriteNames.Count;
+
+				if (_isPlaying)
+				{
+					t.spriteName = spriteNames[setting.index];
+				}
+
+				EditorGUI.DropShadowLabel(rect, spriteNames[setting.index]);
+				rect.height -= 15;
+			}
+			else
+			{
+				return;
 			}
 		}
 
@@ -86,7 +91,10 @@ public class UISpriteAnimator : UISpriteInspector
 		_isPlaying = GUILayout.Toggle(_isPlaying, _isPlaying ? playButton : pauseButton, (GUIStyle)"preButton");
 		if (EditorGUI.EndChangeCheck())
 		{
-			_lastTime = (float)EditorApplication.timeSinceStartup;
+			foreach (var setting in _spriteAnims.Values)
+			{
+				setting.lastTime = (float)EditorApplication.timeSinceStartup;
+			}
 		}
 		if (_isPlaying)
 		{
@@ -98,11 +106,14 @@ public class UISpriteAnimator : UISpriteInspector
 		}
 
 		// Speed Scale
-		//		var speedScale = EditorGUIUtility.IconContent("SpeedScale", "Speed Scale");
-		//		GUILayout.Box(speedScale, (GUIStyle)"preButton");
-		//		_speedScale = GUILayout.HorizontalSlider(_speedScale, 0f, 5f, (GUIStyle)"preSlider", (GUIStyle)"preSliderThumb");
-		//
-		//		GUILayout.Box(_speedScale.ToString("0.000"), new GUIStyle("preLabel"));
+		var speedScale = EditorGUIUtility.IconContent("SpeedScale", "Speed Scale");
+		if (GUILayout.Button(speedScale, (GUIStyle)"preButton"))
+		{
+			_speedScale = 1;
+		}
+		_speedScale = GUILayout.HorizontalSlider(_speedScale, 0f, 5f, (GUIStyle)"preSlider", (GUIStyle)"preSliderThumb");
+
+		GUILayout.Box(_speedScale.ToString("0.000"), new GUIStyle("preLabel"));
 	}
 	float _speedScale = 1f;
 
@@ -113,6 +124,79 @@ public class UISpriteAnimator : UISpriteInspector
 
 	public override bool RequiresConstantRepaint()
 	{
-		return true;
+		return _isPlaying;
+	}
+
+	public class AnimationSetting
+	{
+		public int index;
+		public float delta;
+		public float lastTime;
+		public UISpriteAnimation anim;
+
+		public AnimationSetting(UISpriteAnimation anim)
+		{
+			index = 0;
+			delta = 0;
+			lastTime = (float)EditorApplication.timeSinceStartup;
+			this.anim = anim;
+		}
 	}
 }
+
+/// <summary>
+/// List the all UISprites used in UISprieAnimation
+/// 
+/// For using this, "EditorGUI.DropShadowLabel(GUILayoutUtility.GetRect(Screen.width, 18f), text);" in NGUIEditorTools's 
+/// DrawSprite() function need to be deleted or changed to proper code, because there cannnot use a fixed Rect for multiple objects.
+/// </summary>
+[CustomPreview(typeof(UISprite))]
+public class UISpriteAnimationList : ObjectPreview
+{
+	public override bool HasPreviewGUI()
+	{
+		return true;
+	}
+
+	public override void Initialize(Object[] targets)
+	{
+		base.Initialize(targets);
+		List<Object> sprites = new List<Object>();
+		foreach (UISprite target in targets)
+		{
+			var anim = target.GetComponent<UISpriteAnimation>();
+			if (anim != null)
+			{
+				BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
+				var field = typeof(UISpriteAnimation).GetField("mSpriteNames", flags);
+				var spriteNames = field.GetValue(anim) as List<string>;
+
+				foreach (string name in spriteNames)
+				{
+					UISprite newSprite = new GameObject(name).AddComponent<UISprite>();
+					newSprite.gameObject.hideFlags = HideFlags.HideAndDontSave;
+					newSprite.atlas = target.atlas;
+					newSprite.spriteName = name;
+					sprites.Add(newSprite);
+				}
+			}
+		}
+		m_Targets = sprites.ToArray();
+	}
+
+	public override GUIContent GetPreviewTitle()
+	{
+		return new GUIContent("Sprite List");
+	}
+
+	public override void OnPreviewGUI (Rect rect, GUIStyle background)
+	{
+		UISprite sprite = target as UISprite;
+		if (sprite == null || !sprite.isValid) return;
+
+		Texture2D tex = sprite.mainTexture as Texture2D;
+		if (tex == null) return;
+
+		UISpriteData sd = sprite.atlas.GetSprite(sprite.spriteName);
+		NGUIEditorTools.DrawSprite(tex, rect, sd, sprite.color);
+	}
