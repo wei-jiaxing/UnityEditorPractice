@@ -18,11 +18,12 @@ public class UISpriteAnimator : UISpriteInspector
 	Dictionary<UISprite, AnimationSetting> _spriteAnims = new Dictionary<UISprite, AnimationSetting>();
 
 	bool _isPlaying = true;
-	bool _isMultiply;
+	bool _hasAnimation = false;
 
 	protected override void OnEnable()
 	{
 		base.OnEnable();
+		_hasAnimation = false;
 		if (targets != null)
 		{
 			foreach (var target in targets)
@@ -32,9 +33,9 @@ public class UISpriteAnimator : UISpriteInspector
 				if (spriteAnim != null)
 				{
 					_spriteAnims[targetSprite] = new AnimationSetting(spriteAnim);
+					_hasAnimation = true;
 				}
 			}
-			_isMultiply = targets.Length > 1;
 		}
 	}
 
@@ -43,7 +44,7 @@ public class UISpriteAnimator : UISpriteInspector
 		var t = target as UISprite;
 		AnimationSetting setting;
 
-		if (_spriteAnims.TryGetValue(t, out setting))
+		if (!Application.isPlaying && _spriteAnims.TryGetValue(t, out setting))
 		{
 			setting.delta += ((float)EditorApplication.timeSinceStartup - setting.lastTime) * _speedScale;
 			setting.lastTime = (float)EditorApplication.timeSinceStartup;
@@ -56,16 +57,15 @@ public class UISpriteAnimator : UISpriteInspector
 
 			if (spriteNames.Count > 0)
 			{
-				float rate = 1f / spriteAnim.framesPerSecond;
-				if (rate < setting.delta)
-				{
-					setting.delta = Mathf.Repeat(setting.delta, rate);
-					setting.index++;
-				}
-				setting.index %= spriteNames.Count;
-
 				if (_isPlaying)
 				{
+					float rate = 1f / spriteAnim.framesPerSecond;
+					if (rate < setting.delta)
+					{
+						setting.delta = Mathf.Repeat(setting.delta, rate);
+						setting.index++;
+					}
+					setting.index %= spriteNames.Count;
 					t.spriteName = spriteNames[setting.index];
 				}
 
@@ -84,6 +84,11 @@ public class UISpriteAnimator : UISpriteInspector
 	public override void OnPreviewSettings()
 	{
 		base.OnPreviewSettings();
+		if (!_hasAnimation)
+		{
+			return;
+		}
+
 		var playButton = EditorGUIUtility.IconContent("preAudioPlayOn");
 		var pauseButton = EditorGUIUtility.IconContent("preAudioPlayOff");
 
@@ -177,6 +182,7 @@ public class UISpriteAnimationList : ObjectPreview
 					newSprite.gameObject.hideFlags = HideFlags.HideAndDontSave;
 					newSprite.atlas = target.atlas;
 					newSprite.spriteName = name;
+					newSprite.enabled = false;
 					sprites.Add(newSprite);
 				}
 			}
